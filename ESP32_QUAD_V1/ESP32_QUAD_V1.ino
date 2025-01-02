@@ -1,3 +1,12 @@
+// Microcontroller (MCU): ESP32 WROOM32
+// Inertial Measurement Unit (IMU): GY-87 10DOF (MPU6050, HMC5883L, BMP180)
+// Functionality:
+// 1. Capture raw gyroscope data.
+// 2. Calibrate the gyroscope to eliminate offsets.
+// 3. Capture raw accelerometer data.
+// 4. Calibrate the accelerometer to remove bias.
+// Perform sensor fusion using a Kalman filter for accurate angle estimation.
+
 // 1. Initialization and Startup
 //     Hardware Initialization:
 //         Configure the AVR microcontroller (Atmel ATmega644PA on KK2.1.5).
@@ -8,12 +17,22 @@
 //         Calibrate gyroscope and accelerometer for offset values.
 //     EEPROM Load:
 //         Load user settings (e.g., PIDs, mixer settings, throttle range) stored in the EEPROM.
+// 2. Sensor Data Acquisition
+//     IMU Data Reading:
+//         Read raw gyroscope and accelerometer values from the MPU6050 IMU.
+//     Sensor Calibration:
+//         Apply calibration offsets to the raw sensor data.
+//         Convert sensor data to angular rates (gyro) and linear acceleration (accelerometer).
+
 #include <Wire.h>
 
-// raw gyro and accel values
+// Gyroscope reading variables
 volatile float rawGyroX, rawGyroY, rawGyroZ;
 volatile float gyroOffsetX, gyroOffsetY, gyroOffsetZ;
 volatile float gyroX, gyroY, gyroZ;
+// Acceleration reading variables
+volatile float rawAcceX, rawAcceY, rawAcceZ;
+volatile float acceOffsetX, acceOffsetY, acceOffsetZ;
 volatile float acceX, acceY, acceZ;
 
 // I2C Communication
@@ -22,20 +41,22 @@ volatile float acceX, acceY, acceZ;
 // Initialize ESP32 & MPU6050
 void ESP32_init();
 void MPU6050_init();
-void MPU6050_config();
+// read and calibrate gyro
 void MPU6050_read_gyro();
 void MPU6050_calibrate_gyro();
-void MPU6050_print_gyro_data();
+// read and calibrate acce
+void MPU6050_read_acce();
+void MPU6050_calibrate_acce();
 
 void setup() {
   // ESP32 Initialize
   ESP32_init();
-  // MPU6050 Initialize
+  // MPU6050 Initialize & config DLPF
   MPU6050_init();
-  // MPU6050 config DLPF
-  MPU6050_config();
-  // MPU6050 calibrate gyro
+  // MPU6050 calibrate
+  // gyroscope & accelerometer
   MPU6050_calibrate_gyro();
+  MPU6050_calibrate_acce();
 }
 
 void loop() {
@@ -45,24 +66,25 @@ void loop() {
   gyroX = rawGyroX - gyroOffsetX;
   gyroY = rawGyroY - gyroOffsetY;
   gyroZ = rawGyroZ - gyroOffsetZ;
+  // print final gyro data
+  // Serial.print("X: "); Serial.print(gyroX);
+  // Serial.print(" Y: "); Serial.print(gyroY);
+  // Serial.print(" Z: "); Serial.println(gyroZ);
 
-  // Serial.print("gyroOffsetX: "); Serial.print(gyroOffsetX); Serial.print(" °/s ");
-  // Serial.print("gyroOffsetY: "); Serial.print(gyroOffsetY); Serial.print(" °/s ");
-  // Serial.print("gyroOffsetZ: "); Serial.print(gyroOffsetZ); Serial.println(" °/s ");
-
-  // Serial.print("X: "); Serial.print(gyroX); Serial.print(" °/s ");
-  // Serial.print("Y: "); Serial.print(gyroY); Serial.print(" °/s ");
-  Serial.print("Z: "); Serial.print(gyroZ); Serial.println(" °/s ");
+  // MPU6050 read acce signals
+  MPU6050_read_acce();
+  acceX = rawAcceX - acceOffsetX;
+  acceY = rawAcceY - acceOffsetY;
+  acceZ = rawAcceZ - acceOffsetZ;
+  // print final gyro data
+  // Serial.print("X: "); Serial.print(acceX);
+  // Serial.print(" Y: "); Serial.print(acceY);
+  // Serial.print(" Z: "); Serial.println(acceZ);
 
   delay(50);
 }
 
-// 2. Sensor Data Acquisition
-//     IMU Data Reading:
-//         Read raw gyroscope and accelerometer values from the MPU6050 IMU.
-//     Sensor Calibration:
-//         Apply calibration offsets to the raw sensor data.
-//         Convert sensor data to angular rates (gyro) and linear acceleration (accelerometer).
+
 //     Complementary Filter:
 //         Fuse accelerometer and gyroscope data to calculate tilt angles (roll, pitch) and yaw.
 
