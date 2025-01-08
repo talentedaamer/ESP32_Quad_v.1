@@ -57,6 +57,8 @@ void setup() {
   // gyroscope & accelerometer
   MPU6050_calibrate_gyro();
   MPU6050_calibrate_acce();
+
+  // Enable I2C bypass mode before reading compass and barometer
 }
 
 void loop() {
